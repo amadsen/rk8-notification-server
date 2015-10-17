@@ -19,7 +19,12 @@ var rcFileNamePrefix = "rk8_auth_notifyd",
         port: 8080
     };
 
-
+/**
+ * Eventually socket.io will be a notification socket module (and/or plugin)
+ * just like Google Cloud Messaging, Apple Push Notification, standard web socket,
+ * and other notification channels (maybe even email and SMS, though
+ * 'registration' doesn't have as clear a meaning in those contexts.)
+ */
 function startNotificationService(opts, ready) {
     var app = express(),
         server = http.Server(app),
@@ -60,13 +65,13 @@ function startNotificationService(opts, ready) {
         if (!details.msg) {
             return res.sendStatus(400)
         }
-        sharedSockets.send(details, function(err){
+        return sharedSockets.send(details, function(err){
             if (err) {
                 console.log(err);
                 return res.sendStatus(400);
             }
             console.log("Notification sent!");
-            res.sendStatus(200);
+            res.status(200);
             return res.send("Notification Sent!");
         });
     });
@@ -76,9 +81,14 @@ function startNotificationService(opts, ready) {
             ids: [ socket.id ],
             socket: {
                 send: function (msg, done) {
-                    socket.emit('notification', msg, function(){
-                        done();
+                    socket.emit('notification', msg, function(ack){
+                        console.log("Acknowledgement recieved: " + ack +
+                                    "\n\tfor message: " + msg +
+                                    "\n\tto id: " + socket.id);
                     });
+                    // send done when we have attempted to send the message,
+                    // Not when it is aknowledged.
+                    done();
                 }
             }
         };
