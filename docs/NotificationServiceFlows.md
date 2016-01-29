@@ -1,8 +1,9 @@
 # Notification Service Flows
 
 ## New Client Flow
+
 1. `Client` connects to notification service
-2. Notification Service requests identification
+2. `Notification Service` requests identification
 3. `Client` generates an `authentication key pair` (specific to notification service)
 4. `Client` sends id and hash of `authentication public key`, signed, to the `Notification Service`
 5. `Notification Service` attempts to find saved authentication public key for id and public authentication key hash (and fails)
@@ -21,6 +22,7 @@
 
 
 ## Returning Client Flow
+
 1. `Client` connects to `Notification Service`
 2. `Notification Service` requests identification
 3. `Client` sends id and hash of `public authentication key` for `Notification Service` (which must already exist)
@@ -38,12 +40,14 @@
 ## Client Registration with Notification Source
 
 ### Goals
+
 1. `Client` does not send (broadly used) ID so IDs can be easily revoked
 2. `Notification Source` is verified and notifications are encrypted while in transit
 3. `Notification Service` knows who to send the notification to
 4. Limit complexity for `Notification Source`s
 
 ### Tools
+
 + `Client` can sign things with it’s private key **during registration** only
 + `Client` can encrypt things with the `notification service` provided `notification public key` **during registration** only
 + `Client` *can* send an identifier for the `Notification Source` to the `Notification Service` during registration, since we expect the `Notification Service` to always be online
@@ -51,6 +55,7 @@
 + Registration *should* probably include sending a targeted test notification to verify end to end communication
 
 ### The Flow
+
 1. `Client` requests and receives a (potentially temporary) public key from the `Notification Source`
 2. `Client` generates a `Unique Notification Source ID` 
 3. `Client` generates an `authentication token` consisting of the `Unique Notification Source ID`, `Client ID`, a `token generation timestamp`, and a pseudorandom `passcode` which may be used as the basis for generating `Notification Symmetric Encryption Key`s.
