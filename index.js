@@ -7,16 +7,18 @@
 var express = require('express'),
     bodyParser = require('body-parser'),
     http = require("http"),
-    socket_io = require("socket.io"),
     path = require("path"),
     rc = require("rc"),
     deepExtend = require("deep-extend"),
     sharedSockets = require('./lib/shared-client-sockets.js');
-    
+
 // Variables
 var rcFileNamePrefix = "rk8_auth_notifyd",
     defaults = {
-        port: 8080
+        port: 8080,
+        channels: {
+          "./lib/notification-channels/rk8-socket-io.js": {}
+        }
     };
 
 /**
@@ -32,23 +34,42 @@ function startNotificationService(opts, ready) {
             caseSensitive: true,
             mergeParams: true,
             strict: true
-        }),
-        io = socket_io(server);
-        
+        });
+
     var rcOpts = rc(rcFileNamePrefix, {}),
         options = deepExtend({}, defaults);
     options = deepExtend(options, rcOpts);
     options = deepExtend(options, opts);
-    
+
     console.log("Merged options: ");
     console.log(options);
-    
+
+    /*
+    Initialize all configured notification-channels
+    */
+    Object.keys(options.channels).forEach( function configureChannel(module_path) {
+      var channelCfg = options.channels[ module_path ],
+          channelFn = ('function' === typeof(channelCfg))? channelCfg : (
+            function(module_path, cfg){
+              try {
+                return require(module_path)(cfg);
+              } catch (e) {
+                console.warn("Unable to initialize channel: ", module_path, cfg);
+              }
+            }
+          )(module_path, channelCfg);
+
+      if('function' === typeof(channelFn)){
+        channelFn(server, sharedSockets.register);
+      }
+    });
+
     server.listen( options.port );
 
     app.get('/', function (req, res) {
       res.sendfile( path.join(__dirname, 'browser', 'index.html') );
     });
-    
+
     app.use('/notify', notify_router);
     notify_router.use(bodyParser.json());
     notify_router.all('/:id/:msg?', function (req, res){
@@ -58,7 +79,7 @@ function startNotificationService(opts, ready) {
         };
         console.log("Recieved nofity request for id: "+req.params.id);
         console.log(" details: "+JSON.stringify(details));
-        
+
         /*
          * TODO: Before making this available to anyone, put authentication / authorization code in place!!!
          */
@@ -75,37 +96,7 @@ function startNotificationService(opts, ready) {
             return res.send("Notification Sent!");
         });
     });
-    
-    io.on('connection', function (socket) {
-        var details = {
-            ids: [ socket.id ],
-            socket: {
-                send: function (msg, done) {
-                    socket.emit('notification', msg, function(ack){
-                        console.log("Acknowledgement recieved: " + ack +
-                                    "\n\tfor message: " + msg +
-                                    "\n\tto id: " + socket.id);
-                    });
-                    // send done when we have attempted to send the message,
-                    // Not when it is aknowledged.
-                    done();
-                }
-            }
-        };
-        sharedSockets.register(details, function(err, socketInfo) {
-            // emit a proposed id that the client can give out to send notifications
-            socket.emit('id', socketInfo.id);
-            console.log("Sent socket.id: " + socketInfo.id );
-            
-            socket.on('id.ack', function (data) {
-                // Recieve back the id that the client actually wants to listen with.
-                // These ids will eventually be AMQP queues (or redis or similar) so
-                // we can easily go multi-process.
-                console.log(data);
-            });
-        });
-    });
-    
+
 }
 
 if (require.main === module) {
