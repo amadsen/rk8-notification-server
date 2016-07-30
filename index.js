@@ -16,6 +16,7 @@ var express = require('express'),
 var rcFileNamePrefix = "rk8_auth_notifyd",
     defaults = {
         port: 8080,
+        notifyPort: 8081,
         channels: {
           "./lib/notification-channels/rk8-socket-io.js": {}
         }
@@ -30,6 +31,7 @@ var rcFileNamePrefix = "rk8_auth_notifyd",
 function startNotificationService(opts, ready) {
     var app = express(),
         server = http.Server(app),
+        notifyApp = express(),
         notify_router = express.Router({
             caseSensitive: true,
             mergeParams: true,
@@ -44,6 +46,10 @@ function startNotificationService(opts, ready) {
     console.log("Merged options: ");
     console.log(options);
 
+    app.use( function(req, res, next) {
+      console.log('Request for url:', req.url, req.originalUrl);
+      next();
+    });
     /*
     Initialize all configured notification-channels
     */
@@ -60,29 +66,28 @@ function startNotificationService(opts, ready) {
           )(module_path, channelCfg);
 
       if('function' === typeof(channelFn)){
-        channelFn(server, sharedSockets.register);
+        channelFn(server, sharedSockets);
       }
     });
 
     server.listen( options.port );
 
-    app.get('/', function (req, res) {
-      res.sendfile( path.join(__dirname, 'browser', 'index.html') );
-    });
-
-    app.use('/notify', notify_router);
+    notifyApp.listen( options.notifyPort );
+    notifyApp.use('/notify', notify_router);
     notify_router.use(bodyParser.json());
-    notify_router.all('/:id/:msg?', function (req, res){
+
+    /*
+     * NOTE: This API is strictly for use by trusted processes within a firewall.
+     * DO NOT expose this API to an untrusted network.
+     */
+    notify_router.all('/:username/:msg?', function (req, res){
         var details = {
-            socket: req.params.id,
+            username: req.params.username,
             msg: (req.query || {}).msg || req.headers['notification-message'] || (req.body || {}).msg
         };
-        console.log("Recieved nofity request for id: "+req.params.id);
+        console.log("Recieved nofity request for username: "+req.params.username);
         console.log(" details: "+JSON.stringify(details));
 
-        /*
-         * TODO: Before making this available to anyone, put authentication / authorization code in place!!!
-         */
         if (!details.msg) {
             return res.sendStatus(400)
         }
