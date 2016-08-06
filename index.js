@@ -10,7 +10,7 @@ var express = require('express'),
     path = require("path"),
     rc = require("rc"),
     deepExtend = require("deep-extend"),
-    sharedSockets = require('./lib/shared-client-sockets.js');
+    sharedClientSockets = require('./lib/shared-client-sockets.js');
 
 // Variables
 var rcFileNamePrefix = "rk8_auth_notifyd",
@@ -19,6 +19,11 @@ var rcFileNamePrefix = "rk8_auth_notifyd",
         notifyPort: 8081,
         channels: {
           "./lib/notification-channels/rk8-socket-io.js": {}
+        },
+        authenticate: {
+          "modules": {
+            "./lib/authenticate/localhost-ropverify.js": {}
+          }
         }
     };
 
@@ -45,6 +50,8 @@ function startNotificationService(opts, ready) {
 
     console.log("Merged options: ");
     console.log(options);
+
+    var sharedSockets = sharedClientSockets(options);
 
     app.use( function(req, res, next) {
       console.log('Request for url:', req.url, req.originalUrl);
