@@ -10,10 +10,11 @@ var express = require('express'),
     path = require("path"),
     rc = require("rc"),
     deepExtend = require("deep-extend"),
-    sharedClientSockets = require('./lib/shared-client-sockets.js');
+    sharedClientSockets = require('./lib/shared-client-sockets.js'),
+    pkg = require('./package.json');
 
 // Variables
-var rcFileNamePrefix = "rk8_auth_notifyd",
+var rcFileNamePrefix = pkg.name,
     defaults = {
         port: 8080,
         notifyPort: 8081,
