@@ -88,10 +88,13 @@ function startNotificationService(opts, ready) {
      * NOTE: This API is strictly for use by trusted processes within a firewall.
      * DO NOT expose this API to an untrusted network.
      */
-    notify_router.all('/:username/:msg?', function (req, res){
+    function notifyRequestHandler(req, res){
         var details = {
             username: req.params.username,
-            msg: (req.query || {}).msg || req.headers['notification-message'] || (req.body || {}).msg
+            msg: (req.query || {}).msg ||
+              req.headers['notification-message'] ||
+              (req.body || {}).msg ||
+              req.params.msg
         };
         console.log("Recieved nofity request for username: "+req.params.username);
         console.log(" details: "+JSON.stringify(details));
@@ -108,7 +111,10 @@ function startNotificationService(opts, ready) {
             res.status(200);
             return res.send("Notification Sent!");
         });
-    });
+    }
+    notify_router.all('/:username/:msg?', notifyRequestHandler);
+    notify_router.all('/:username', notifyRequestHandler);
+
 
 }
 
