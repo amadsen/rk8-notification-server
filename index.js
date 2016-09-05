@@ -89,20 +89,37 @@ function startNotificationService(opts, ready) {
      * DO NOT expose this API to an untrusted network.
      */
     function notifyRequestHandler(req, res){
-        var details = {
+        var data = {
             username: req.params.username,
-            msg: (req.query || {}).msg ||
+            msg:
               req.headers['notification-message'] ||
               (req.body || {}).msg ||
-              req.params.msg
+              (req.query || {}).msg ||
+              req.params.msg,
+            ack:
+              req.headers['notification-ack'] ||
+              (req.body || {}).ack ||
+              (req.query || {}).ack
         };
-        console.log("Recieved nofity request for username: "+req.params.username);
-        console.log(" details: "+JSON.stringify(details));
+        console.log("Recieved nofity request for username: " + data.username);
+        console.log(" data: "+JSON.stringify(data));
 
-        if (!details.msg) {
+        if (!data.msg) {
             return res.sendStatus(400)
         }
-        return sharedSockets.send(details, function(err){
+
+        // TODO -maybe-: check if data.ack is a valid url for acknowledgements
+        var ack = data.ack;
+        if (ack) {
+          delete data.ack;
+          data.ackFn = function (err, ackData) {
+            if (!err) {
+              // TODO: post ackData to url in data.ack
+              console.log('Pretending to send ack data:', ackData, ' to ', ack);
+            }
+          }
+        }
+        return sharedSockets.send(data, function(err){
             if (err) {
                 console.log(err);
                 return res.sendStatus(400);
@@ -114,8 +131,6 @@ function startNotificationService(opts, ready) {
     }
     notify_router.all('/:username/:msg?', notifyRequestHandler);
     notify_router.all('/:username', notifyRequestHandler);
-
-
 }
 
 if (require.main === module) {
