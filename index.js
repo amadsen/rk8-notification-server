@@ -99,12 +99,16 @@ function startNotificationService(opts, ready) {
             ack:
               req.headers['notification-ack'] ||
               (req.body || {}).ack ||
-              (req.query || {}).ack
+              (req.query || {}).ack,
+            url:
+              req.headers['notification-url'] ||
+              (req.body || {}).url ||
+              (req.query || {}).url
         };
         console.log("Recieved nofity request for username: " + data.username);
         console.log(" data: "+JSON.stringify(data));
 
-        if (!data.msg) {
+        if (!(data.msg || data.url)) {
             return res.sendStatus(400)
         }
 
