@@ -25,6 +25,10 @@ var rcFileNamePrefix = pkg.name,
           "modules": {
             "./lib/authenticate/localhost-ropverify.js": {}
           }
+        },
+        persistence: {
+          module: "./lib/persistence/fs-json.js",
+          opts: {}
         }
     };
 
